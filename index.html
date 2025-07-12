@@ -337,6 +337,13 @@
             justify-content: space-between;
         }
 
+        .loading-indicator {
+            display: none;
+            text-align: center;
+            padding: 10px;
+            color: #666;
+        }
+
         @media (max-width: 768px) {
             .header h1 {
                 font-size: 2em;
@@ -459,12 +466,19 @@
                 </div>
             </div>
             
+            <div class="loading-indicator" id="loadingIndicator">
+                Saving donation information... Please wait.
+            </div>
+            
             <p style="margin-top: 20px; color: #666;">After sending payment and filling out your information, click the button below to confirm your donation.</p>
-            <button onclick="confirmDonation()" style="padding: 15px 30px; background: #2ecc71; color: white; border: none; border-radius: 10px; font-size: 16px; cursor: pointer; margin-top: 20px;">I've Sent Payment</button>
+            <button onclick="confirmDonation()" id="confirmBtn" style="padding: 15px 30px; background: #2ecc71; color: white; border: none; border-radius: 10px; font-size: 16px; cursor: pointer; margin-top: 20px;">I've Sent Payment</button>
         </div>
     </div>
 
     <script>
+        // Google Apps Script URL for data submission
+        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwkWaaahWIkH5ee-NvK01WBAZxgp_yzRHRk5oFFOsiT23Rzn9nqfZqp45D1D6rs7WqO/exec';
+
         // Fundraiser data
         let fundraiserData = {
             name: "Lawanda",
@@ -472,8 +486,8 @@
             raised: 0,
             goal: 3500,
             donations: {},
-            venmo: "@ADJones1",
-            cashapp: "$VetCoach",
+            venmo: "@LawandaJones31",
+            cashapp: "$LawandaJones31",
             paypal: "jonesoverseas4_3@yahoo.com",
             zelle: "512-585-4106",
             completed: false
@@ -483,6 +497,26 @@
         let selectedPayment = '';
         let donorData = [];
         let tapCount = 0;
+
+        // Send data to Google Sheets
+        async function sendToGoogleSheets(donationData) {
+            try {
+                const response = await fetch(GOOGLE_SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(donationData)
+                });
+                
+                console.log('Data sent to Google Sheets successfully');
+                return true;
+            } catch (error) {
+                console.error('Error sending data to Google Sheets:', error);
+                return false;
+            }
+        }
 
         // Secret key combination to show admin panel (Ctrl+Shift+A)
         document.addEventListener('keydown', function(event) {
@@ -565,7 +599,7 @@
         // Update donation summary
         function updateDonationSummary() {
             const total = selectedNumbers.reduce((sum, num) => sum + num, 0);
-            document.getElementById('donationSummary').innerHTML = `<h3>Selected Amount: ${total}</h3>`;
+            document.getElementById('donationSummary').innerHTML = `<h3>Selected Amount: $${total}</h3>`;
             
             const donateBtn = document.getElementById('donateBtn');
             if (selectedNumbers.length === 0) {
@@ -575,7 +609,7 @@
                 donateBtn.textContent = 'Next';
                 donateBtn.disabled = true;
             } else {
-                donateBtn.textContent = `Next (${total})`;
+                donateBtn.textContent = `Next ($${total})`;
                 donateBtn.disabled = false;
             }
         }
@@ -696,7 +730,7 @@
         }
 
         // Confirm donation
-        function confirmDonation() {
+        async function confirmDonation() {
             // Validate donor information
             const donorName = document.getElementById('donorName').value.trim();
             const donorPhone = document.getElementById('donorPhone').value.trim();
@@ -709,14 +743,37 @@
             
             const total = selectedNumbers.reduce((sum, num) => sum + num, 0);
             
-            // Record donation and mark numbers as permanently donated
+            // Show loading indicator
+            document.getElementById('loadingIndicator').style.display = 'block';
+            document.getElementById('confirmBtn').disabled = true;
+            document.getElementById('confirmBtn').textContent = 'Processing...';
+            
+            // Prepare donation data for Google Sheets
+            const donationData = {
+                fundraiser: 'Lawanda',
+                amount: total,
+                numbers: selectedNumbers.join(';'),
+                paymentMethod: selectedPayment,
+                date: new Date().toLocaleDateString(),
+                timestamp: new Date().toISOString(),
+                donorName: donorName,
+                donorPhone: donorPhone,
+                donorAddress: donorAddress,
+                goal: fundraiserData.goal,
+                bio: fundraiserData.bio
+            };
+            
+            // Send to Google Sheets
+            const success = await sendToGoogleSheets(donationData);
+            
+            // Record donation locally (for immediate UI update)
             selectedNumbers.forEach(num => {
                 fundraiserData.donations[num] = true;
             });
             
             fundraiserData.raised += total;
             
-            // Record donor data with contact information
+            // Record donor data locally
             const donation = {
                 amount: total,
                 numbers: [...selectedNumbers],
@@ -738,6 +795,11 @@
             document.getElementById('donorPhone').value = '';
             document.getElementById('donorAddress').value = '';
             
+            // Hide loading indicator
+            document.getElementById('loadingIndicator').style.display = 'none';
+            document.getElementById('confirmBtn').disabled = false;
+            document.getElementById('confirmBtn').textContent = 'I\'ve Sent Payment';
+            
             // Update UI
             generateNumberGrid();
             updateProgress();
@@ -746,7 +808,11 @@
             closeModal();
             
             // Show success message
-            alert('Thanks for helping me get to Tanzania! I can\'t wait to share updates with you.');
+            if (success) {
+                alert('Thanks for helping me get to Tanzania! Your donation has been recorded. I can\'t wait to share updates with you.');
+            } else {
+                alert('Thanks for helping me get to Tanzania! Your donation has been recorded locally. I can\'t wait to share updates with you.');
+            }
         }
 
         // Close modal
@@ -767,7 +833,7 @@
             alert('Bio updated successfully!');
         }
 
-        function markNumbersAsDonated() {
+        async function markNumbersAsDonated() {
             const input = document.getElementById('manualNumbers').value.trim();
             if (!input) {
                 alert('Please enter at least one number.');
@@ -797,41 +863,33 @@
                 const total = newlyMarked.reduce((sum, num) => sum + num, 0);
                 fundraiserData.raised += total;
                 
+                // Send manual donation to Google Sheets
+                const donationData = {
+                    fundraiser: 'Lawanda',
+                    amount: total,
+                    numbers: newlyMarked.join(';'),
+                    paymentMethod: 'Manual Entry (Admin)',
+                    date: new Date().toLocaleDateString(),
+                    timestamp: new Date().toISOString(),
+                    donorName: 'Manual Entry',
+                    donorPhone: 'N/A',
+                    donorAddress: 'N/A',
+                    goal: fundraiserData.goal,
+                    bio: fundraiserData.bio
+                };
+                
+                await sendToGoogleSheets(donationData);
+                
                 generateNumberGrid();
                 updateProgress();
                 updateDonationSummary();
                 
-                alert(`Successfully marked numbers ${newlyMarked.join(', ')} as donated! Added ${total} to your total.${alreadyTaken.length > 0 ? `\n\nNumbers ${alreadyTaken.join(', ')} were already taken.` : ''}`);
+                alert(`Successfully marked numbers ${newlyMarked.join(', ')} as donated! Added $${total} to your total.${alreadyTaken.length > 0 ? `\n\nNumbers ${alreadyTaken.join(', ')} were already taken.` : ''}`);
             } else {
                 alert(`All entered numbers (${alreadyTaken.join(', ')}) were already taken.`);
             }
             
             document.getElementById('manualNumbers').value = '';
-        }
-
-        function updatePaymentInfo() {
-            fundraiserData.venmo = document.getElementById('venmo1').value;
-            fundraiserData.cashapp = document.getElementById('cashapp1').value;
-            fundraiserData.paypal = document.getElementById('paypal1').value;
-            fundraiserData.zelle = document.getElementById('zelle1').value;
-            
-            // Update the payment buttons display
-            document.querySelector('.payment-methods').innerHTML = `
-                <div class="payment-btn" onclick="openVenmo('https://venmo.com/Lawanda-Jones-31')">
-                    💜 Venmo
-                </div>
-                <div class="payment-btn" onclick="openCashApp('https://cash.app/$LawandaJones31')">
-                    💚 CashApp
-                </div>
-                <div class="payment-btn" onclick="openPayPal('https://www.paypal.com/donate/?hosted_button_id=SKVSD3FNPFCAG')">
-                    💙 PayPal
-                </div>
-                <div class="payment-btn" onclick="selectPayment('zelle')">
-                    🟡 Zelle<br>512-585-4106
-                </div>
-            `;
-            
-            alert('Payment information updated successfully!');
         }
 
         function updateDonorList() {

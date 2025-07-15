@@ -4,6 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Help Lawanda Get to Tanzania - Mission Trip Fundraiser</title>
+    
+    <!-- Security Headers -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:;">
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <meta http-equiv="X-Frame-Options" content="DENY">
+    <meta http-equiv="X-XSS-Protection" content="1; mode=block">
+    
     <style>
         * {
             margin: 0;
@@ -325,12 +332,32 @@
             text-align: center;
         }
 
-        .data-export {
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 8px;
+        .status-indicator {
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .status-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .auth-form {
+            background: #fff3cd;
+            border: 1px solid #ffeeba;
+            padding: 20px;
+            border-radius: 10px;
             margin: 15px 0;
-            border-left: 4px solid #3498db;
         }
 
         @media (max-width: 768px) {
@@ -368,33 +395,40 @@
             <div class="admin-content" id="adminContent">
                 <h3>Admin Dashboard - Lawanda</h3>
                 
-                <div class="data-export">
-                    <h4>📊 Data Management</h4>
-                    <p><strong>Total Donations:</strong> <span id="donationCount">0</span> | <strong>Total Raised:</strong> $<span id="totalRaised">0</span></p>
-                    <button onclick="downloadDonorData()" style="padding: 10px; background: #3498db; color: white; border: none; border-radius: 5px; margin: 5px;">📥 Download CSV</button>
-                    <button onclick="exportDataAsJSON()" style="padding: 10px; background: #e74c3c; color: white; border: none; border-radius: 5px; margin: 5px;">📤 Export JSON</button>
-                    <button onclick="importDataFromJSON()" style="padding: 10px; background: #f39c12; color: white; border: none; border-radius: 5px; margin: 5px;">📤 Import JSON</button>
+                <!-- Admin Authentication -->
+                <div class="auth-form" id="authForm">
+                    <h4>🔐 Admin Authentication Required</h4>
+                    <div class="form-group">
+                        <label>Admin Password:</label>
+                        <input type="password" id="adminPassword" placeholder="Enter admin password">
+                        <button onclick="authenticateAdmin()" style="margin-top: 10px; padding: 10px; background: #e74c3c; color: white; border: none; border-radius: 5px; width: 100%;">🔓 Unlock Admin Panel</button>
+                    </div>
+                    <div id="authError" class="status-indicator status-error" style="display: none;"></div>
                 </div>
 
-                <div class="form-group">
-                    <label>Update Your Bio</label>
-                    <textarea id="bioText">I'm excited to serve the children of Arusha, Tanzania and help improve their school environment. Your support means the world to me!</textarea>
-                    <button onclick="updateBio()" style="margin-top: 10px; padding: 10px; background: #3498db; color: white; border: none; border-radius: 5px;">Update Bio</button>
-                </div>
+                <div id="adminDashboard" style="display: none;">
+                    <div class="form-group">
+                        <label>📊 Stats</label>
+                        <p><strong>Total Donations:</strong> <span id="donationCount">0</span></p>
+                        <p><strong>Total Raised:</strong> $<span id="totalRaised">0</span></p>
+                        <p><strong>Last Updated:</strong> <span id="lastUpdated">Never</span></p>
+                    </div>
 
-                <div class="form-group">
-                    <label>Mark Numbers as Donated (when you receive payments directly)</label>
-                    <input type="text" id="manualNumbers" placeholder="Enter numbers separated by commas (e.g., 9,15,23)" style="margin-bottom: 10px;">
-                    <button onclick="markNumbersAsDonated()" style="padding: 10px; background: #e74c3c; color: white; border: none; border-radius: 5px; width: 100%;">Mark as Donated</button>
-                </div>
+                    <div class="form-group">
+                        <label>Update Your Bio</label>
+                        <textarea id="bioText" maxlength="500">I'm excited to serve the children of Arusha, Tanzania and help improve their school environment. Your support means the world to me!</textarea>
+                        <button onclick="updateBio()" style="margin-top: 10px; padding: 10px; background: #3498db; color: white; border: none; border-radius: 5px;">Update Bio</button>
+                    </div>
 
-                <div class="form-group">
-                    <label>Load Existing Data</label>
-                    <input type="file" id="jsonFile" accept=".json" style="margin-bottom: 10px;">
-                    <button onclick="loadFromFile()" style="padding: 10px; background: #27ae60; color: white; border: none; border-radius: 5px; width: 100%;">Load from File</button>
-                </div>
+                    <div class="form-group">
+                        <label>Mark Numbers as Donated</label>
+                        <input type="text" id="manualNumbers" placeholder="Enter numbers separated by commas (e.g., 9,15,23)" style="margin-bottom: 10px;" maxlength="200">
+                        <button onclick="markNumbersAsDonated()" style="padding: 10px; background: #e74c3c; color: white; border: none; border-radius: 5px; width: 100%;">Mark as Donated</button>
+                    </div>
 
-                <div id="recentDonations" style="max-height: 300px; overflow-y: auto; margin-top: 20px;"></div>
+                    <button onclick="downloadDonorData()" style="padding: 15px 30px; background: #f39c12; color: white; border: none; border-radius: 10px; font-size: 16px; cursor: pointer; margin: 5px;">📥 Download CSV</button>
+                    <button onclick="resetAllData()" style="padding: 15px 30px; background: #dc3545; color: white; border: none; border-radius: 10px; font-size: 16px; cursor: pointer; margin: 5px;">🗑️ Reset All Data</button>
+                </div>
             </div>
         </div>
 
@@ -453,16 +487,16 @@
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
                     <div>
                         <label style="display: block; margin-bottom: 5px; font-weight: bold;">Full Name *</label>
-                        <input type="text" id="donorName" required style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 5px;">
+                        <input type="text" id="donorName" required style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 5px;" maxlength="100">
                     </div>
                     <div>
                         <label style="display: block; margin-bottom: 5px; font-weight: bold;">Phone Number *</label>
-                        <input type="tel" id="donorPhone" required style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 5px;">
+                        <input type="tel" id="donorPhone" required style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 5px;" maxlength="20">
                     </div>
                 </div>
                 <div>
                     <label style="display: block; margin-bottom: 5px; font-weight: bold;">Mailing Address *</label>
-                    <textarea id="donorAddress" required rows="3" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 5px;" placeholder="Street Address, City, State, ZIP"></textarea>
+                    <textarea id="donorAddress" required rows="3" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 5px;" placeholder="Street Address, City, State, ZIP" maxlength="300"></textarea>
                 </div>
             </div>
             
@@ -472,169 +506,85 @@
     </div>
 
     <script>
-        // 💾 SIMPLE LOCAL STORAGE SYSTEM - No APIs Required!
+        // Security Configuration
+        const ADMIN_PASSWORD = 'tanzania2024'; // Change this password!
         
-        // Fundraiser data
+        // Fundraiser data - stored in localStorage
         let fundraiserData = {
             name: "Lawanda",
             bio: "I'm excited to serve the children of Arusha, Tanzania and help improve their school environment. Your support means the world to me!",
             raised: 0,
             goal: 3500,
-            donations: {}, // Stores which numbers are donated
+            donations: {},
             completed: false
         };
 
-        let donorData = []; // Stores all donation records
+        let donorData = [];
         let selectedNumbers = [];
         let selectedPayment = '';
         let tapCount = 0;
+        let isAuthenticated = false;
 
-        // 💾 DATA PERSISTENCE FUNCTIONS
-        function saveData() {
-            try {
-                localStorage.setItem('lawanda_fundraiser_data', JSON.stringify(fundraiserData));
-                localStorage.setItem('lawanda_donor_data', JSON.stringify(donorData));
-                console.log('✅ Data saved locally');
-                return true;
-            } catch (error) {
-                console.error('❌ Error saving data:', error);
-                return false;
-            }
-        }
-
+        // Load data from localStorage
         function loadData() {
-            try {
-                const savedFundraiser = localStorage.getItem('lawanda_fundraiser_data');
-                const savedDonors = localStorage.getItem('lawanda_donor_data');
-                
-                if (savedFundraiser) {
-                    fundraiserData = { ...fundraiserData, ...JSON.parse(savedFundraiser) };
-                    console.log('✅ Fundraiser data loaded');
-                }
-                
-                if (savedDonors) {
-                    donorData = JSON.parse(savedDonors);
-                    console.log('✅ Donor data loaded');
-                }
-                
-                updateAdminStats();
-                return true;
-            } catch (error) {
-                console.error('❌ Error loading data:', error);
-                return false;
+            const saved = localStorage.getItem('fundraiser_data');
+            if (saved) {
+                fundraiserData = JSON.parse(saved);
+            }
+            
+            const savedDonors = localStorage.getItem('donor_data');
+            if (savedDonors) {
+                donorData = JSON.parse(savedDonors);
             }
         }
 
-        function exportDataAsJSON() {
-            const exportData = {
-                fundraiserData: fundraiserData,
-                donorData: donorData,
-                exportDate: new Date().toISOString(),
-                version: "1.0"
-            };
-            
-            const dataStr = JSON.stringify(exportData, null, 2);
-            const dataBlob = new Blob([dataStr], {type: 'application/json'});
-            
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(dataBlob);
-            link.download = `lawanda_fundraiser_backup_${new Date().toISOString().split('T')[0]}.json`;
-            link.click();
-            
-            alert('✅ Data exported! Keep this file safe as a backup.');
+        // Save data to localStorage
+        function saveData() {
+            localStorage.setItem('fundraiser_data', JSON.stringify(fundraiserData));
+            localStorage.setItem('donor_data', JSON.stringify(donorData));
         }
 
-        function importDataFromJSON() {
-            const input = document.createElement('input');
-            input.type = 'file';
-            input.accept = '.json';
-            
-            input.onchange = function(event) {
-                const file = event.target.files[0];
-                if (!file) return;
-                
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    try {
-                        const importData = JSON.parse(e.target.result);
-                        
-                        if (importData.fundraiserData && importData.donorData) {
-                            fundraiserData = importData.fundraiserData;
-                            donorData = importData.donorData;
-                            
-                            saveData();
-                            generateNumberGrid();
-                            updateProgress();
-                            updateAdminStats();
-                            updateRecentDonations();
-                            
-                            alert(`✅ Data imported successfully! Loaded ${donorData.length} donations totaling $${fundraiserData.raised}`);
-                        } else {
-                            alert('❌ Invalid file format');
-                        }
-                    } catch (error) {
-                        alert('❌ Error reading file: ' + error.message);
-                    }
+        // Security Functions
+        function sanitizeInput(input) {
+            if (typeof input !== 'string') return '';
+            return input.replace(/[<>\"'&]/g, function(match) {
+                const map = {
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    '"': '&quot;',
+                    "'": '&#x27;',
+                    '&': '&amp;'
                 };
-                reader.readAsText(file);
-            };
-            
-            input.click();
+                return map[match];
+            }).trim();
         }
 
-        function downloadDonorData() {
-            if (donorData.length === 0) {
-                alert('No donation data to download yet.');
-                return;
+        function authenticateAdmin() {
+            const password = document.getElementById('adminPassword').value;
+            const authError = document.getElementById('authError');
+            
+            if (password === ADMIN_PASSWORD) {
+                isAuthenticated = true;
+                document.getElementById('authForm').style.display = 'none';
+                document.getElementById('adminDashboard').style.display = 'block';
+                document.getElementById('adminPassword').value = '';
+                updateAdminStats();
+            } else {
+                authError.textContent = 'Invalid admin password';
+                authError.style.display = 'block';
+                setTimeout(() => {
+                    authError.style.display = 'none';
+                }, 3000);
             }
-            
-            const csvContent = "data:text/csv;charset=utf-8," + 
-                "Fundraiser,Amount,Numbers,Payment Method,Date,Timestamp,Donor Name,Phone,Address\n" +
-                donorData.map(d => `Lawanda,$${d.amount},"${d.numbers.join(';')}",${d.method},${d.date},${d.timestamp},"${d.donorName}","${d.donorPhone}","${d.donorAddress.replace(/"/g, '""')}"`).join("\n");
-            
-            const encodedUri = encodeURI(csvContent);
-            const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", `lawanda_donations_${new Date().toISOString().split('T')[0]}.csv`);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
         }
 
-        // 📊 ADMIN FUNCTIONS
-        function updateAdminStats() {
-            document.getElementById('donationCount').textContent = donorData.length;
-            document.getElementById('totalRaised').textContent = fundraiserData.raised;
-        }
-
-        function updateRecentDonations() {
-            const container = document.getElementById('recentDonations');
-            if (donorData.length === 0) {
-                container.innerHTML = '<p>No donations yet</p>';
-                return;
-            }
-            
-            const recent = donorData.slice(-5).reverse(); // Last 5 donations
-            container.innerHTML = `
-                <h4>Recent Donations:</h4>
-                ${recent.map(d => `
-                    <div style="background: white; padding: 10px; margin: 5px 0; border-radius: 5px; border-left: 4px solid #27ae60;">
-                        <strong>$${d.amount}</strong> from ${d.donorName} | ${d.date}
-                        <br><small>Numbers: ${d.numbers.join(', ')} | ${d.method}</small>
-                    </div>
-                `).join('')}
-            `;
-        }
-
-        // 🎯 CORE FUNDRAISER FUNCTIONS
+        // Initialize page
         function init() {
-            loadData(); // Load saved data first
+            loadData();
             generateNumberGrid();
             updateProgress();
             updateDonationSummary();
             setupMobileAdminAccess();
-            updateAdminStats();
-            updateRecentDonations();
         }
 
         function generateNumberGrid() {
@@ -696,6 +646,11 @@
             document.getElementById('progressText').textContent = `$${fundraiserData.raised} / $${fundraiserData.goal.toLocaleString()}`;
             document.getElementById('progressPercentage').textContent = `${Math.round(percentage)}% to goal`;
             
+            if (isAuthenticated) {
+                document.getElementById('bioDisplay').textContent = fundraiserData.bio;
+                document.getElementById('bioText').value = fundraiserData.bio;
+            }
+            
             if (fundraiserData.raised >= fundraiserData.goal) {
                 document.getElementById('fundraiserCard').classList.add('completed');
                 document.getElementById('numberGrid').style.display = 'none';
@@ -738,34 +693,22 @@
             const modal = document.getElementById('paymentModal');
             const info = document.getElementById('paymentInfo');
             
-            let paymentHandle = '';
-            let methodName = '';
+            const paymentMethods = {
+                'venmo': { handle: '@LawandaJones31', name: 'Venmo' },
+                'cashapp': { handle: '$LawandaJones31', name: 'CashApp' },
+                'paypal': { handle: 'Use PayPal link', name: 'PayPal' },
+                'zelle': { handle: '512-585-4106', name: 'Zelle' }
+            };
             
-            switch(method) {
-                case 'venmo':
-                    paymentHandle = '@LawandaJones31';
-                    methodName = 'Venmo';
-                    break;
-                case 'cashapp':
-                    paymentHandle = '$LawandaJones31';
-                    methodName = 'CashApp';
-                    break;
-                case 'paypal':
-                    paymentHandle = 'Use PayPal link';
-                    methodName = 'PayPal';
-                    break;
-                case 'zelle':
-                    paymentHandle = '512-585-4106';
-                    methodName = 'Zelle';
-                    break;
-            }
+            const payment = paymentMethods[method];
+            if (!payment) return;
             
             info.innerHTML = `
                 <h3>Send $${amount} to Lawanda</h3>
-                <p><strong>${methodName}:</strong> ${paymentHandle}</p>
+                <p><strong>${payment.name}:</strong> ${payment.handle}</p>
                 <p><strong>Memo:</strong> Tanzania Mission Trip</p>
                 <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin: 20px 0;">
-                    <p>Please send <strong>$${amount}</strong> using ${methodName}</p>
+                    <p>Please send <strong>$${amount}</strong> using ${payment.name}</p>
                 </div>
             `;
             
@@ -773,9 +716,9 @@
         }
 
         function confirmDonation() {
-            const donorName = document.getElementById('donorName').value.trim();
-            const donorPhone = document.getElementById('donorPhone').value.trim();
-            const donorAddress = document.getElementById('donorAddress').value.trim();
+            const donorName = sanitizeInput(document.getElementById('donorName').value);
+            const donorPhone = sanitizeInput(document.getElementById('donorPhone').value);
+            const donorAddress = sanitizeInput(document.getElementById('donorAddress').value);
             
             if (!donorName || !donorPhone || !donorAddress) {
                 alert('Please fill out all donor information fields.');
@@ -791,17 +734,18 @@
             
             fundraiserData.raised += total;
             
-            // Record donation
+            // Create donation record
             const donation = {
                 amount: total,
                 numbers: [...selectedNumbers],
                 method: selectedPayment,
-                timestamp: new Date().toISOString(),
+                timestamp: Date.now(),
                 date: new Date().toLocaleDateString(),
                 donorName: donorName,
                 donorPhone: donorPhone,
                 donorAddress: donorAddress
             };
+            
             donorData.push(donation);
             
             // Save data
@@ -816,29 +760,21 @@
             document.getElementById('donorPhone').value = '';
             document.getElementById('donorAddress').value = '';
             
+            closeModal();
+            
             // Update UI
             generateNumberGrid();
             updateProgress();
             updateDonationSummary();
-            updateAdminStats();
-            updateRecentDonations();
-            closeModal();
             
-            alert('✅ Thank you! Your donation has been recorded successfully.');
+            alert('✅ Thank you! Your donation has been recorded.');
         }
 
         function closeModal() {
             document.getElementById('paymentModal').style.display = 'none';
         }
 
-        // 🛠️ ADMIN PANEL FUNCTIONS
-        document.addEventListener('keydown', function(event) {
-            if (event.ctrlKey && event.shiftKey && event.key === 'A') {
-                const adminPanel = document.getElementById('adminPanel');
-                adminPanel.style.display = adminPanel.style.display === 'none' ? 'block' : 'none';
-            }
-        });
-
+        // Admin Functions
         function setupMobileAdminAccess() {
             const fundraiserName = document.querySelector('.fundraiser-name');
             fundraiserName.addEventListener('click', function() {
@@ -865,22 +801,35 @@
             content.classList.toggle('active');
         }
 
+        function updateAdminStats() {
+            if (!isAuthenticated) return;
+            document.getElementById('donationCount').textContent = donorData.length;
+            document.getElementById('totalRaised').textContent = fundraiserData.raised;
+            document.getElementById('lastUpdated').textContent = new Date().toLocaleString();
+        }
+
         function updateBio() {
-            const newBio = document.getElementById('bioText').value;
+            if (!isAuthenticated) return;
+            
+            const newBio = sanitizeInput(document.getElementById('bioText').value);
             fundraiserData.bio = newBio;
             document.getElementById('bioDisplay').textContent = newBio;
             saveData();
-            alert('Bio updated successfully!');
+            alert('✅ Bio updated!');
         }
 
         function markNumbersAsDonated() {
-            const input = document.getElementById('manualNumbers').value.trim();
+            if (!isAuthenticated) return;
+            
+            const input = sanitizeInput(document.getElementById('manualNumbers').value);
             if (!input) {
                 alert('Please enter at least one number.');
                 return;
             }
             
-            const numbers = input.split(',').map(n => parseInt(n.trim())).filter(n => !isNaN(n) && n >= 1 && n <= 80);
+            const numbers = input.split(',')
+                .map(n => parseInt(n.trim()))
+                .filter(n => !isNaN(n) && n >= 1 && n <= 80);
             
             if (numbers.length === 0) {
                 alert('Please enter valid numbers between 1 and 80.');
@@ -888,12 +837,9 @@
             }
             
             let newlyMarked = [];
-            let alreadyTaken = [];
             
             numbers.forEach(num => {
-                if (fundraiserData.donations[num]) {
-                    alreadyTaken.push(num);
-                } else {
+                if (!fundraiserData.donations[num]) {
                     fundraiserData.donations[num] = true;
                     newlyMarked.push(num);
                 }
@@ -908,28 +854,75 @@
                     amount: total,
                     numbers: newlyMarked,
                     method: 'Manual Entry (Admin)',
-                    timestamp: new Date().toISOString(),
+                    timestamp: Date.now(),
                     date: new Date().toLocaleDateString(),
                     donorName: 'Manual Entry',
                     donorPhone: 'N/A',
                     donorAddress: 'N/A'
                 };
-                donorData.push(donation);
                 
+                donorData.push(donation);
                 saveData();
+                
                 generateNumberGrid();
                 updateProgress();
-                updateDonationSummary();
                 updateAdminStats();
-                updateRecentDonations();
                 
-                alert(`Successfully marked numbers ${newlyMarked.join(', ')} as donated! Added $${total} to your total.${alreadyTaken.length > 0 ? `\n\nNumbers ${alreadyTaken.join(', ')} were already taken.` : ''}`);
-            } else {
-                alert(`All entered numbers (${alreadyTaken.join(', ')}) were already taken.`);
+                alert(`✅ Marked numbers ${newlyMarked.join(', ')} as donated!`);
             }
             
             document.getElementById('manualNumbers').value = '';
         }
+
+        function downloadDonorData() {
+            if (!isAuthenticated || donorData.length === 0) {
+                alert('No donation data to download yet.');
+                return;
+            }
+            
+            const csvContent = "data:text/csv;charset=utf-8," + 
+                "Fundraiser,Amount,Numbers,Payment Method,Date,Timestamp,Donor Name,Phone,Address\n" +
+                donorData.map(d => `Lawanda,$${d.amount},"${d.numbers.join(';')}",${d.method},${d.date},${d.timestamp},"${d.donorName}","${d.donorPhone}","${d.donorAddress.replace(/"/g, '""')}"`).join("\n");
+            
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `lawanda_donations_${new Date().toISOString().split('T')[0]}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function resetAllData() {
+            if (!isAuthenticated) return;
+            
+            if (confirm('⚠️ This will delete ALL donation data. Are you sure?')) {
+                fundraiserData = {
+                    name: "Lawanda",
+                    bio: "I'm excited to serve the children of Arusha, Tanzania and help improve their school environment. Your support means the world to me!",
+                    raised: 0,
+                    goal: 3500,
+                    donations: {},
+                    completed: false
+                };
+                donorData = [];
+                
+                saveData();
+                generateNumberGrid();
+                updateProgress();
+                updateAdminStats();
+                
+                alert('✅ All data has been reset.');
+            }
+        }
+
+        // Keyboard shortcut for admin panel
+        document.addEventListener('keydown', function(event) {
+            if (event.ctrlKey && event.shiftKey && event.key === 'A') {
+                const adminPanel = document.getElementById('adminPanel');
+                adminPanel.style.display = adminPanel.style.display === 'none' ? 'block' : 'none';
+            }
+        });
 
         // Initialize the page
         init();
